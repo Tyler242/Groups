@@ -175,12 +175,18 @@ fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel
             textAlign = TextAlign.Center,
             color = color
         )
-        if (index > 0) {
-            SmallFloatingActionButton(onClick = {
+        SmallFloatingActionButton(onClick = {
+            if (index != 0) {
                 sessionViewModel.updateQueue(playable, index - 1)
-            }) {
-                Icon(Icons.Rounded.KeyboardArrowUp, "Move item in queue", Modifier.size(36.dp))
             }
+        }) {
+            Icon(
+                Icons.Rounded.KeyboardArrowUp,
+                "Move item in queue",
+                Modifier
+                    .size(36.dp)
+                    .background(color)
+            )
         }
     }
 }

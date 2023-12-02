@@ -25,8 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
-    private val spotifyRepository = SpotifyRepository(this)
     private val userRepository = UserRepository()
+    private lateinit var spotifyRepository: SpotifyRepository
     private lateinit var spotifyViewModel: SpotifyViewModel
     private lateinit var appViewModel: AppViewModel
     private lateinit var observer: MainLifecycleObserver
@@ -38,11 +38,12 @@ class MainActivity : ComponentActivity() {
             val job: Job = launch(context = Dispatchers.Default) {
                 secretsModel = getSecrets()
             }
-            spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
             appViewModel = AppViewModel()
 
             job.join()
 
+            spotifyRepository = SpotifyRepository(this@MainActivity, secretsModel)
+            spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
             observer = MainLifecycleObserver(activityResultRegistry, spotifyViewModel, secretsModel)
             lifecycle.addObserver(observer)
         }

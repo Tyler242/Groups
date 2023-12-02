@@ -8,6 +8,7 @@ import com.example.spotifygroups.datamodel.GetTracksModel
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.datamodel.SavedTracksModel
 import com.example.spotifygroups.datamodel.SearchTracksModel
+import com.example.spotifygroups.datamodel.SecretsModel
 import com.example.spotifygroups.datamodel.SpotifyUserModel
 import com.example.spotifygroups.network.getRequest
 import com.spotify.android.appremote.api.ConnectionParams
@@ -19,9 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-class SpotifyRepository(private val context: Activity) {
-    private val CLIENT_ID = "9adc315ded0746659f31baa5226bdcbb"
-    private val REDIRECT_URI = "spotifygroups://callback"
+class SpotifyRepository(private val context: Activity, private val secretsModel: SecretsModel) {
     private var _token: String? = null
     lateinit var loggedInUser: SpotifyUserModel
     private lateinit var _spotifyAppRemote: SpotifyAppRemote
@@ -50,7 +49,7 @@ class SpotifyRepository(private val context: Activity) {
 
     private fun connect(callback: (SpotifyAppRemote) -> Unit) {
         val connectParams =
-            ConnectionParams.Builder(CLIENT_ID).setRedirectUri(REDIRECT_URI).showAuthView(true)
+            ConnectionParams.Builder(secretsModel.clientId).setRedirectUri(secretsModel.redirectUri).showAuthView(true)
                 .build()
         SpotifyAppRemote.connect(context, connectParams, ConnectListener(callback))
     }
