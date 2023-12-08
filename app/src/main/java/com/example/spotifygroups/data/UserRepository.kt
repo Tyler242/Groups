@@ -88,6 +88,28 @@ class UserRepository {
         return resultModel
     }
 
+    fun incrementQueue(): QueueResultModel {
+        val resultModel = QueueResultModel(_id = "", creatorId = "")
+        try {
+            val url = "https://spotify-groups-api.onrender.com/queue/$queueId"
+            return putRequest(url, "Bearer $token", resultModel)
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+        return resultModel
+    }
+
+    fun playPauseQueue(pause: Boolean): QueueResultModel {
+        val resultModel = QueueResultModel(_id = "", creatorId = "")
+        try {
+            val url = "https://spotify-groups-api.onrender.com/queue/$queueId/${if (pause) "pause" else "play"}"
+            return putRequest(url, "Bearer $token", resultModel)
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+        return resultModel
+    }
+
     fun getToken(): String {
         return token
     }

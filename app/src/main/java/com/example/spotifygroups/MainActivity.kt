@@ -1,5 +1,7 @@
 package com.example.spotifygroups
 
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.UserRepository
 import com.example.spotifygroups.datamodel.SecretsModel
@@ -25,8 +28,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
-    private val spotifyRepository = SpotifyRepository(this)
     private val userRepository = UserRepository()
+    private lateinit var spotifyRepository: SpotifyRepository
     private lateinit var spotifyViewModel: SpotifyViewModel
     private lateinit var appViewModel: AppViewModel
     private lateinit var observer: MainLifecycleObserver
@@ -38,13 +41,18 @@ class MainActivity : ComponentActivity() {
             val job: Job = launch(context = Dispatchers.Default) {
                 secretsModel = getSecrets()
             }
-            spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
             appViewModel = AppViewModel()
 
             job.join()
 
+            spotifyRepository = SpotifyRepository(this@MainActivity, secretsModel)
+            spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
             observer = MainLifecycleObserver(activityResultRegistry, spotifyViewModel, secretsModel)
             lifecycle.addObserver(observer)
+
+//            val sbr: BroadcastReceiver = SpotifyBroadcastReceiver()
+//            val filter = IntentFilter("com.spotify.music.queuechanged")
+//            ContextCompat.registerReceiver(this@MainActivity, sbr, filter, ContextCompat.RECEIVER_EXPORTED)
         }
     }
 

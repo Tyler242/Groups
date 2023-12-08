@@ -8,20 +8,19 @@ import com.example.spotifygroups.datamodel.GetTracksModel
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.datamodel.SavedTracksModel
 import com.example.spotifygroups.datamodel.SearchTracksModel
+import com.example.spotifygroups.datamodel.SecretsModel
 import com.example.spotifygroups.datamodel.SpotifyUserModel
 import com.example.spotifygroups.network.getRequest
 import com.spotify.android.appremote.api.ConnectionParams
-import com.spotify.android.appremote.api.ContentApi
 import com.spotify.android.appremote.api.SpotifyAppRemote
-import com.spotify.protocol.types.ListItems
+import com.spotify.protocol.client.Subscription
+import com.spotify.protocol.types.PlayerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-class SpotifyRepository(private val context: Activity) {
-    private val CLIENT_ID = "9adc315ded0746659f31baa5226bdcbb"
-    private val REDIRECT_URI = "spotifygroups://callback"
+class SpotifyRepository(private val context: Activity, private val secretsModel: SecretsModel) {
     private var _token: String? = null
     lateinit var loggedInUser: SpotifyUserModel
     private lateinit var _spotifyAppRemote: SpotifyAppRemote
@@ -50,7 +49,8 @@ class SpotifyRepository(private val context: Activity) {
 
     private fun connect(callback: (SpotifyAppRemote) -> Unit) {
         val connectParams =
-            ConnectionParams.Builder(CLIENT_ID).setRedirectUri(REDIRECT_URI).showAuthView(true)
+            ConnectionParams.Builder(secretsModel.clientId).setRedirectUri(secretsModel.redirectUri)
+                .showAuthView(true)
                 .build()
         SpotifyAppRemote.connect(context, connectParams, ConnectListener(callback))
     }
@@ -63,40 +63,103 @@ class SpotifyRepository(private val context: Activity) {
         }
     }
 
-    fun getSpotifyAppRemote(): SpotifyAppRemote {
-        return _spotifyAppRemote
+    fun getCurrentPlayingTrack(): Pair<Playable, Long> {
+        val data = _spotifyAppRemote.playerApi.playerState.await().data
+        val track = data.track
+        val type = if (!track.isPodcast && !track.isEpisode) "track" else "episode"
+        return Pair(
+            Playable(
+                artists = track.artists,
+                duration = track.duration.toInt(),
+                explicit = false,
+                href = "",
+                id = "",
+                isPlayable = true,
+                type = type,
+                name = track.name,
+                uri = track.uri
+            ), data.playbackPosition
+        )
     }
 
-    fun getPlayState(callback: (Boolean) -> Unit) {
-        runBlocking {
-            CoroutineScope(Dispatchers.IO).launch {
-                val isPaused = (_spotifyAppRemote.playerApi.playerState.await()).data.isPaused
-                callback(isPaused)
+    fun playTrack(playable: Playable, withCoroutine: Boolean) {
+        if (withCoroutine) {
+            runBlocking {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        _spotifyAppRemote.playerApi.play(playable.uri)
+                    } catch (ex: Exception) {
+                        Log.i("SR", "Unable to play track")
+                    }
+                }
+            }
+        } else {
+            try {
+                _spotifyAppRemote.playerApi.play(playable.uri)
+            } catch (ex: Exception) {
+                Log.i("SR", "Unable to play track")
             }
         }
     }
 
-    fun updatePlayState(callback: (Boolean) -> Unit) {
-        runBlocking {
-            CoroutineScope(Dispatchers.IO).launch {
-                val isPaused = (_spotifyAppRemote.playerApi.playerState.await()).data.isPaused
-                if (isPaused) _spotifyAppRemote.playerApi.resume()
-                else _spotifyAppRemote.playerApi.pause()
-                callback(!isPaused)
+    fun resume(withCoroutine: Boolean) {
+        if (withCoroutine) {
+            runBlocking {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        _spotifyAppRemote.playerApi.resume()
+                    } catch (ex: Exception) {
+                        Log.i("SR", "Unable to resume playback")
+                    }
+                }
+            }
+        } else {
+            try {
+                _spotifyAppRemote.playerApi.resume()
+            } catch (ex: Exception) {
+                Log.i("SR", "Unable to resume playback")
             }
         }
     }
 
-    fun getRecommendedContentItems(type: String = ContentApi.ContentType.DEFAULT, callback: (ListItems) -> Unit) {
-        runBlocking {
-            CoroutineScope(Dispatchers.IO).launch {
-                val result = _spotifyAppRemote.contentApi.getRecommendedContentItems(type).await()
-                if (result.isSuccessful) callback(result.data)
+    fun pause(withCoroutine: Boolean) {
+        if (withCoroutine) {
+            runBlocking {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        _spotifyAppRemote.playerApi.pause()
+                    } catch (ex: Exception) {
+                        Log.i("SR", "Unable to pause playback")
+                    }
+                }
+            }
+        } else {
+            try {
+                _spotifyAppRemote.playerApi.pause()
+            } catch (ex: Exception) {
+                Log.i("SR", "Unable to pause playback")
             }
         }
     }
 
-    fun searchTracks(query: String, type: String = "track", market: String = "ES", limit: Int = 20): List<Playable> {
+    fun addTrackToQueue(uri: String) {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    _spotifyAppRemote.playerApi.queue(uri).await()
+                } catch (ex: Exception) {
+                    Log.e("SR", "Unable to add track to queue")
+                }
+            }
+        }
+    }
+
+    fun searchTracks(
+        query: String,
+        type: String = "track",
+        market: String = "ES",
+        limit: Int = 20
+    ): List<Playable> {
         try {
             var url = "https://api.spotify.com/v1/search"
             url = url.plus("?q=$query")
@@ -106,7 +169,13 @@ class SpotifyRepository(private val context: Activity) {
             url = url.replace(" ", "+")
             val contentTypeAccept = "application/json"
             val authToken = "Bearer $_token"
-            val data = getRequest(url, contentTypeAccept, contentTypeAccept, authToken, SearchTracksModel())
+            val data = getRequest(
+                url,
+                contentTypeAccept,
+                contentTypeAccept,
+                authToken,
+                SearchTracksModel()
+            )
             return data.tracks.items
         } catch (ex: Exception) {
             ex.printStackTrace()
@@ -121,35 +190,9 @@ class SpotifyRepository(private val context: Activity) {
             url = url.plus("?ids=$queryParam")
             val contentTypeAccept = "application/json"
             val authToken = "Bearer $_token"
-            val data = getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetTracksModel())
+            val data =
+                getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetTracksModel())
             return data.tracks
-        } catch (ex: Exception) {
-            ex.printStackTrace()
-        }
-        return emptyList()
-    }
-
-    fun getGenreSeeds(): List<String> {
-        try {
-            val url = "https://api.spotify.com/v1/recommendations/available-genre-seeds"
-            val contentTypeAccept = "application/json"
-            val authToken = "Bearer $_token"
-            return getRequest(url, contentTypeAccept, contentTypeAccept, authToken, listOf())
-        } catch (ex: Exception) {
-            ex.printStackTrace()
-        }
-        return emptyList()
-    }
-
-    fun getUsersSavedTracks(): List<Playable> {
-        try {
-            val url = "https://api.spotify.com/v1/me/tracks"
-            val contentTypeAccept = "application/json"
-            val authToken = "Bearer $_token"
-            val data = getRequest(url, contentTypeAccept, contentTypeAccept, authToken, SavedTracksModel())
-            return data.items.map {
-                it.track
-            }
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
@@ -161,7 +204,8 @@ class SpotifyRepository(private val context: Activity) {
             val url = "https://api.spotify.com/v1/me/player/queue"
             val contentTypeAccept = "application/json"
             val authToken = "Bearer $_token"
-            val data = getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetQueueModel())
+            val data =
+                getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetQueueModel())
             return data.queue.filter { it.type == "track" }
         } catch (ex: Exception) {
             ex.printStackTrace()
@@ -174,7 +218,13 @@ class SpotifyRepository(private val context: Activity) {
             val url = "https://api.spotify.com/v1/me"
             val contentTypeAccept = "application/json"
             val authToken = "Bearer $_token"
-            loggedInUser = getRequest(url, contentTypeAccept, contentTypeAccept, authToken, SpotifyUserModel("", "", ""))
+            loggedInUser = getRequest(
+                url,
+                contentTypeAccept,
+                contentTypeAccept,
+                authToken,
+                SpotifyUserModel("", "", "")
+            )
         } catch (err: Exception) {
             err.printStackTrace()
         }
