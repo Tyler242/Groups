@@ -1,5 +1,7 @@
 package com.example.spotifygroups
 
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.UserRepository
 import com.example.spotifygroups.datamodel.SecretsModel
@@ -46,6 +49,10 @@ class MainActivity : ComponentActivity() {
             spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
             observer = MainLifecycleObserver(activityResultRegistry, spotifyViewModel, secretsModel)
             lifecycle.addObserver(observer)
+
+//            val sbr: BroadcastReceiver = SpotifyBroadcastReceiver()
+//            val filter = IntentFilter("com.spotify.music.queuechanged")
+//            ContextCompat.registerReceiver(this@MainActivity, sbr, filter, ContextCompat.RECEIVER_EXPORTED)
         }
     }
 

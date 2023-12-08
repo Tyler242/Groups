@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.UserRepository
+import com.example.spotifygroups.datamodel.Image
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.viewmodel.SearchTracksViewModel
 import com.example.spotifygroups.viewmodel.SessionViewModel
@@ -88,7 +89,7 @@ fun SessionView(spotifyRepository: SpotifyRepository, userRepository: UserReposi
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                itemsIndexed(queueUiState) { index, item ->
+                itemsIndexed(queueUiState.queue) { index, item ->
                     QueueItem(item, index, sessionViewModel)
                 }
             }
@@ -118,7 +119,7 @@ fun SessionView(spotifyRepository: SpotifyRepository, userRepository: UserReposi
                     sessionViewModel.updatePlayState()
                 }, shape = CircleShape) {
                     Icon(
-                        if (sessionUiState.isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Close,
+                        if (sessionUiState.isPaused || queueUiState.queue.isEmpty()) Icons.Rounded.PlayArrow else Icons.Rounded.Close,
                         "Play/Pause",
                         Modifier.size(48.dp)
                     )
@@ -140,15 +141,9 @@ fun SessionView(spotifyRepository: SpotifyRepository, userRepository: UserReposi
 
 @Composable
 fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel = viewModel()) {
-    val modifier = if (index == 0) Modifier.background(Color.DarkGray)
-    else Modifier.background(Color.LightGray)
+    val modifier = if (index == 0) Modifier.background(Color.DarkGray) else Modifier.background(Color.LightGray)
     val color = if (index == 0) Color.LightGray else Color.DarkGray
-
-    var image = playable.album!!.images.find { it.width < 100 }
-    if (image == null) {
-        val lastImgIndex = playable.album.images.count()
-        image = playable.album.images[lastImgIndex - 1]
-    }
+    val image = getImage(playable)
 
     Row(
         modifier,
@@ -189,4 +184,13 @@ fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel
             )
         }
     }
+}
+
+fun getImage(playable: Playable): Image {
+    var image = playable.album!!.images.find { it.width < 100 }
+    if (image == null) {
+        val lastImgIndex = playable.album.images.count()
+        image = playable.album.images[lastImgIndex - 1]
+    }
+    return image
 }
