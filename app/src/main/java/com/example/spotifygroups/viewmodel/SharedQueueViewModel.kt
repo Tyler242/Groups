@@ -3,7 +3,7 @@ package com.example.spotifygroups.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.SpotifyRepository
-import com.example.spotifygroups.data.UserRepository
+import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.datamodel.QueueResultModel
 import com.example.spotifygroups.uistatemodel.SharedQueueUiState
@@ -15,7 +15,7 @@ import kotlin.concurrent.schedule
 
 class SharedQueueViewModel(
     private val spotifyRepository: SpotifyRepository,
-    private val userRepository: UserRepository
+    private val queueRepository: QueueRepository
 ) : ViewModel() {
     private val _liveQueue: MutableStateFlow<SharedQueueUiState> = MutableStateFlow(
         SharedQueueUiState()
@@ -50,34 +50,34 @@ class SharedQueueViewModel(
     }
 
     fun addToLiveQueue(playable: Playable, callback: () -> Unit) {
-        val queueResult = userRepository.addToQueue(playable.id)
+        val queueResult = queueRepository.addToQueue(playable.id)
         Log.i("SQVM", "queueResult.queue: ${queueResult.queue}")
         Log.i("SQVM", "queueResult.currentTrack: ${queueResult.currentTrack}")
         handleResult(queueResult, callback)
     }
 
     fun syncLiveQueue(callback: () -> Unit) {
-        val queueResult = userRepository.createQueue()
+        val queueResult = queueRepository.createQueue()
         handleResult(queueResult, callback)
     }
 
     fun removeFromLiveQueue(playable: Playable, callback: () -> Unit) {
-        val queueResult = userRepository.removeFromQueue(playable.id)
+        val queueResult = queueRepository.removeFromQueue(playable.id)
         handleResult(queueResult, callback)
     }
 
     fun updateQueue(playable: Playable, index: Int, callback: () -> Unit) {
-        val queueResult = userRepository.updateQueue(playable.id, index)
+        val queueResult = queueRepository.updateQueue(playable.id, index)
         handleResult(queueResult, callback)
     }
 
     fun incrementQueue(callback: () -> Unit) {
-        val queueResult = userRepository.incrementQueue()
+        val queueResult = queueRepository.incrementQueue()
         handleResult(queueResult, callback)
     }
 
     fun playPauseQueue(pause: Boolean, callback: () -> Unit) {
-        val queueResult = userRepository.playPauseQueue(pause)
+        val queueResult = queueRepository.playPauseQueue(pause)
         handleResult(queueResult, callback)
     }
 

@@ -69,14 +69,12 @@ fun HomeView(appViewModel: AppViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LargeFloatingActionButton({
-//                    homeViewModel.update(HomeActions.GROUP)
-//                    showDialog = true
                     appViewModel.renderSessionView()
                 }, shape = CircleShape) {
                     Icon(Icons.Rounded.PlayArrow, "Start Group Session", Modifier.size(64.dp))
                 }
                 LargeFloatingActionButton({
-//                    homeViewModel.update(HomeActions.FRIENDS)
+                    appViewModel.renderFriendView()
                 }, shape = CircleShape) {
                     Icon(Icons.Rounded.Person, "Friends", Modifier.size(64.dp))
                 }

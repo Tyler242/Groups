@@ -3,7 +3,6 @@ package com.example.spotifygroups.data
 import com.example.spotifygroups.datamodel.AuthRequestModel
 import com.example.spotifygroups.datamodel.AuthResultModel
 import com.example.spotifygroups.datamodel.AuthTokenModel
-import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.datamodel.QueueAddRequestModel
 import com.example.spotifygroups.datamodel.QueueResultModel
 import com.example.spotifygroups.datamodel.SpotifyUserModel
@@ -11,7 +10,7 @@ import com.example.spotifygroups.network.deleteRequest
 import com.example.spotifygroups.network.postRequest
 import com.example.spotifygroups.network.putRequest
 
-class UserRepository {
+class QueueRepository {
     private lateinit var token: String
     private lateinit var userId: String
     private lateinit var queueId: String
@@ -20,7 +19,7 @@ class UserRepository {
         try {
             val url = "https://spotify-groups-api.onrender.com/auth/login"
             val data: AuthResultModel = postRequest(
-                url, "", AuthRequestModel(user.email, user.spotifyUuid), AuthResultModel(
+                url, "", AuthRequestModel(user.email, user.spotifyUuid, user.name), AuthResultModel(
                     AuthTokenModel("", 0),
                     "",
                     "",

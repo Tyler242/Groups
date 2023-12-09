@@ -3,7 +3,7 @@ package com.example.spotifygroups.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.SpotifyRepository
-import com.example.spotifygroups.data.UserRepository
+import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.uistatemodel.SessionUiState
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +18,7 @@ import kotlin.concurrent.scheduleAtFixedRate
 
 class SessionViewModel(
     private val spotifyRepository: SpotifyRepository,
-    private val userRepository: UserRepository,
+    private val queueRepository: QueueRepository,
     private val sharedQueueViewModel: SharedQueueViewModel
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SessionUiState())

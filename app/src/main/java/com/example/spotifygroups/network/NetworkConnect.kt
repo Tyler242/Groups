@@ -5,7 +5,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 
-fun <T : Any> getRequest(url: String, contentType: String, accept: String, authToken: String, returnModel: T): T {
+fun <T : Any> getRequest(
+    url: String,
+    contentType: String,
+    accept: String,
+    authToken: String,
+    returnModel: T
+): T {
     val connection = URL(url).openConnection() as HttpURLConnection
     connection.requestMethod = "GET"
     connection.setRequestProperty("Content-Type", contentType)
@@ -36,7 +42,7 @@ fun <T : Any, B : Any> postRequest(url: String, authToken: String, body: B, retu
     return Gson().fromJson(data, returnModel::class.java)
 }
 
-fun <T: Any> postRequest(url: String, authToken: String, returnModel: T): T {
+fun <T : Any> postRequest(url: String, authToken: String, returnModel: T): T {
     val connection = URL(url).openConnection() as HttpURLConnection
 
     connection.requestMethod = "POST"
@@ -52,7 +58,7 @@ fun <T: Any> postRequest(url: String, authToken: String, returnModel: T): T {
     return Gson().fromJson(data, returnModel::class.java)
 }
 
-fun <T: Any, B: Any> putRequest(url: String, authToken: String, body: B, returnModel: T): T {
+fun <T : Any, B : Any> putRequest(url: String, authToken: String, body: B, returnModel: T): T {
     val jsonString: String = Gson().toJson(body)
     val connection = URL(url).openConnection() as HttpURLConnection
 
@@ -72,7 +78,7 @@ fun <T: Any, B: Any> putRequest(url: String, authToken: String, body: B, returnM
     return Gson().fromJson(data, returnModel::class.java)
 }
 
-fun <T: Any> putRequest(url: String, authToken: String, returnModel: T): T {
+fun <T : Any> putRequest(url: String, authToken: String, returnModel: T): T {
     val connection = URL(url).openConnection() as HttpURLConnection
 
     connection.requestMethod = "PUT"
@@ -88,7 +94,7 @@ fun <T: Any> putRequest(url: String, authToken: String, returnModel: T): T {
     return Gson().fromJson(data, returnModel::class.java)
 }
 
-fun <T: Any> deleteRequest(url: String, authToken: String, returnModel: T): T {
+fun <T : Any> deleteRequest(url: String, authToken: String, returnModel: T): T {
     val connection = URL(url).openConnection() as HttpURLConnection
 
     connection.requestMethod = "DELETE"
