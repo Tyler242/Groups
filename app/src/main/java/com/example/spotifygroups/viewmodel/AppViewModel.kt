@@ -18,5 +18,9 @@ class AppViewModel {
     fun renderSessionView() {
         _uiState.value = AppUiState(View.SESSION)
     }
+
+    fun renderFriendView() {
+        _uiState.value = AppUiState(View.FRIEND)
+    }
 }
 

@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.spotifygroups.data.SpotifyRepository
-import com.example.spotifygroups.data.UserRepository
+import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.datamodel.Image
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.viewmodel.SearchTracksViewModel
@@ -50,12 +50,12 @@ import com.example.spotifygroups.viewmodel.SessionViewModel
 import com.example.spotifygroups.viewmodel.SharedQueueViewModel
 
 @Composable
-fun SessionView(spotifyRepository: SpotifyRepository, userRepository: UserRepository) {
-    val sharedQueueResultModel = SharedQueueViewModel(spotifyRepository, userRepository)
+fun SessionView(spotifyRepository: SpotifyRepository, queueRepository: QueueRepository) {
+    val sharedQueueResultModel = SharedQueueViewModel(spotifyRepository, queueRepository)
     val sessionViewModel =
-        SessionViewModel(spotifyRepository, userRepository, sharedQueueResultModel)
+        SessionViewModel(spotifyRepository, queueRepository, sharedQueueResultModel)
     val searchTracksViewModel =
-        SearchTracksViewModel(spotifyRepository, userRepository, sharedQueueResultModel)
+        SearchTracksViewModel(spotifyRepository, queueRepository, sharedQueueResultModel)
 
     val queueUiState by sharedQueueResultModel.liveQueue.collectAsState()
     val sessionUiState by sessionViewModel.uiState.collectAsState()

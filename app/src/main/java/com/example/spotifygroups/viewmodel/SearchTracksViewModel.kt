@@ -2,7 +2,7 @@ package com.example.spotifygroups.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.SpotifyRepository
-import com.example.spotifygroups.data.UserRepository
+import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.datamodel.Playable
 import com.example.spotifygroups.uistatemodel.SearchTracksUiState
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +15,7 @@ import kotlinx.coroutines.runBlocking
 
 class SearchTracksViewModel(
     private val spotifyRepository: SpotifyRepository,
-    private val userRepository: UserRepository,
+    private val queueRepository: QueueRepository,
     private val sharedQueueViewModel: SharedQueueViewModel
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchTracksUiState())

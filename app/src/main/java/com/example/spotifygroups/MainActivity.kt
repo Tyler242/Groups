@@ -1,7 +1,5 @@
 package com.example.spotifygroups
 
-import android.content.BroadcastReceiver
-import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,13 +9,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.core.content.ContextCompat
+import com.example.spotifygroups.data.FriendRepository
+import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.data.SpotifyRepository
-import com.example.spotifygroups.data.UserRepository
 import com.example.spotifygroups.datamodel.SecretsModel
 import com.example.spotifygroups.network.getRequest
 import com.example.spotifygroups.ui.theme.DitestTheme
 import com.example.spotifygroups.uistatemodel.View
+import com.example.spotifygroups.view.FriendView
 import com.example.spotifygroups.view.HomeView
 import com.example.spotifygroups.view.SessionView
 import com.example.spotifygroups.viewmodel.AppViewModel
@@ -28,7 +27,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
-    private val userRepository = UserRepository()
+    private val queueRepository = QueueRepository()
+    private lateinit var friendRepository: FriendRepository
     private lateinit var spotifyRepository: SpotifyRepository
     private lateinit var spotifyViewModel: SpotifyViewModel
     private lateinit var appViewModel: AppViewModel
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
             job.join()
 
             spotifyRepository = SpotifyRepository(this@MainActivity, secretsModel)
-            spotifyViewModel = SpotifyViewModel(spotifyRepository, userRepository)
+            spotifyViewModel = SpotifyViewModel(spotifyRepository, queueRepository)
             observer = MainLifecycleObserver(activityResultRegistry, spotifyViewModel, secretsModel)
             lifecycle.addObserver(observer)
 
@@ -70,8 +70,15 @@ class MainActivity : ComponentActivity() {
                     if (appState.view == View.HOME) HomeView(appViewModel)
                     else if (appState.view == View.SESSION) SessionView(
                         spotifyRepository,
-                        userRepository
+                        queueRepository
                     )
+                    else if (appState.view == View.FRIEND) {
+                        friendRepository = FriendRepository(
+                            queueRepository.getUserId(),
+                            queueRepository.getToken()
+                        )
+                        FriendView(friendRepository)
+                    }
                 }
             }
         }
@@ -84,6 +91,12 @@ class MainActivity : ComponentActivity() {
 
     private fun getSecrets(): SecretsModel {
         val url = "https://spotify-groups-api.onrender.com/secrets"
-        return getRequest(url, "application/json", "application/json", "Bearer fjls@!*4jal*FJle_428", SecretsModel("", ""))
+        return getRequest(
+            url,
+            "application/json",
+            "application/json",
+            "Bearer fjls@!*4jal*FJle_428",
+            SecretsModel("", "")
+        )
     }
 }
