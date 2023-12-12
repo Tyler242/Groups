@@ -2,14 +2,17 @@ package com.example.spotifygroups.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.QueueRepository
+import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.datamodel.QPlayable
+import com.example.spotifygroups.datamodel.QueueItem
 import com.example.spotifygroups.datamodel.QueueResultModel
 import com.example.spotifygroups.uistatemodel.SharedQueueUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.lang.IndexOutOfBoundsException
 import java.util.Timer
 import kotlin.concurrent.schedule
 
@@ -22,7 +25,7 @@ class SharedQueueViewModel(
     )
     val liveQueue: StateFlow<SharedQueueUiState> = _liveQueue.asStateFlow()
 
-    fun playNext(track: Playable, millisecondsLeft: Long, callback: () -> Unit) {
+    fun playNext(track: QPlayable, millisecondsLeft: Long, callback: () -> Unit) {
         spotifyRepository.addTrackToQueue(track.uri)
         Timer().schedule(delay = millisecondsLeft) {
             incrementQueue {
@@ -41,33 +44,38 @@ class SharedQueueViewModel(
     }
 
     fun hasNextTrack(): Boolean {
-        val countOfTracks = _liveQueue.value.queue.count()
-        return countOfTracks > 1
+        return if (_liveQueue.value.currentTrack !== null) {
+            _liveQueue.value.currentTrack!!.next !== null
+        } else {
+            false
+        }
     }
 
-    fun getNextTrack(): Playable {
-        return _liveQueue.value.queue[1]
+    fun getNextTrack(): QPlayable {
+        return _liveQueue.value.currentTrack!!.next!!
     }
 
-    fun addToLiveQueue(playable: Playable, callback: () -> Unit) {
-        val queueResult = queueRepository.addToQueue(playable.id)
-        Log.i("SQVM", "queueResult.queue: ${queueResult.queue}")
-        Log.i("SQVM", "queueResult.currentTrack: ${queueResult.currentTrack}")
+    fun addToLiveQueue(playable: QPlayable, callback: () -> Unit) {
+        val queueResult = queueRepository.addToQueue(playable)
         handleResult(queueResult, callback)
     }
 
     fun syncLiveQueue(callback: () -> Unit) {
-        val queueResult = queueRepository.createQueue()
+        val queueResult = if (queueRepository.isQueueIdSet()) {
+            queueRepository.getQueue()
+        } else {
+            queueRepository.createQueue()
+        }
         handleResult(queueResult, callback)
     }
 
-    fun removeFromLiveQueue(playable: Playable, callback: () -> Unit) {
-        val queueResult = queueRepository.removeFromQueue(playable.id)
+    fun removeFromLiveQueue(playable: QPlayable, callback: () -> Unit) {
+        val queueResult = queueRepository.removeFromQueue(playable.spotifyId)
         handleResult(queueResult, callback)
     }
 
-    fun updateQueue(playable: Playable, index: Int, callback: () -> Unit) {
-        val queueResult = queueRepository.updateQueue(playable.id, index)
+    fun updateQueue(playable: QPlayable, index: Int, callback: () -> Unit) {
+        val queueResult = queueRepository.updateQueue(playable.spotifyId, index)
         handleResult(queueResult, callback)
     }
 
@@ -82,22 +90,40 @@ class SharedQueueViewModel(
     }
 
     private fun handleResult(queueResult: QueueResultModel, callback: () -> Unit) {
-        if (queueResult._id === "" && queueResult.creatorId === "") {
+        if (queueResult.id === "" && queueResult.creatorId === "") {
             // display error message and use the previous queue
             Log.e("SQVM", "ERROR with queue.")
         } else {
-            if (queueResult.queue.isNotEmpty()) {
-                val queue = spotifyRepository.getTracks(queueResult.queue)
-                _liveQueue.value = SharedQueueUiState(
-                    queue,
-                    queue[0],
-                    queueResult.positionMs,
-                    queueResult.isPaused
-                )
-            } else {
-                SharedQueueUiState(positionMs = queueResult.positionMs, isPaused = queueResult.isPaused)
+            try {
+                if (queueResult.queue.isNotEmpty()) {
+                    _liveQueue.value = SharedQueueUiState(
+                        queueResult.queue,
+                        queueResult.currentTrack,
+                        queueResult.positionMs,
+                        queueResult.isPaused,
+                        queueResult.participantIds,
+                        queueResult.creatorId
+                    )
+                } else {
+                    _liveQueue.value = SharedQueueUiState(
+                        positionMs = queueResult.positionMs,
+                        isPaused = queueResult.isPaused,
+                        participants = queueResult.participantIds,
+                        creatorId = queueResult.creatorId
+                    )
+                }
+            } catch (ex: IndexOutOfBoundsException) {
+                ex.printStackTrace()
+                return
+            } catch (ex: Exception) {
+                ex.printStackTrace()
             }
         }
         callback()
+    }
+
+    fun reset() {
+        _liveQueue.value = SharedQueueUiState()
+        queueRepository.reset()
     }
 }

@@ -5,7 +5,9 @@ import android.util.Log
 import com.example.spotifygroups.ConnectListener
 import com.example.spotifygroups.datamodel.GetQueueModel
 import com.example.spotifygroups.datamodel.GetTracksModel
+import com.example.spotifygroups.datamodel.Image
 import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.datamodel.QPlayable
 import com.example.spotifygroups.datamodel.SavedTracksModel
 import com.example.spotifygroups.datamodel.SearchTracksModel
 import com.example.spotifygroups.datamodel.SecretsModel
@@ -26,6 +28,7 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
     private lateinit var _spotifyAppRemote: SpotifyAppRemote
 
     fun saveToken(token: String) {
+        Log.i("SR", token)
         _token = token
     }
 
@@ -70,7 +73,7 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
         return Pair(
             Playable(
                 artists = track.artists,
-                duration = track.duration.toInt(),
+                duration = track.duration,
                 explicit = false,
                 href = "",
                 id = "",
@@ -82,7 +85,7 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
         )
     }
 
-    fun playTrack(playable: Playable, withCoroutine: Boolean) {
+    fun playTrack(playable: QPlayable, withCoroutine: Boolean) {
         if (withCoroutine) {
             runBlocking {
                 CoroutineScope(Dispatchers.IO).launch {
@@ -159,7 +162,7 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
         type: String = "track",
         market: String = "ES",
         limit: Int = 20
-    ): List<Playable> {
+    ): List<QPlayable> {
         try {
             var url = "https://api.spotify.com/v1/search"
             url = url.plus("?q=$query")
@@ -176,11 +179,28 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
                 authToken,
                 SearchTracksModel()
             )
-            return data.tracks.items
+            return data.tracks.items.map { playable ->
+                QPlayable(
+                    image = getImage(playable),
+                    artists = playable.artists.map { it.name },
+                    duration = playable.duration,
+                    name = playable.name,
+                    spotifyId = playable.id,
+                    uri = playable.uri
+                )
+            }
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
         return emptyList()
+    }
+
+    private fun getImage(playable: Playable): Image? {
+        var image = playable.album!!.images.find { it.width < 100 }
+        if (image == null) {
+            image = playable.album.images[playable.album.images.lastIndex]
+        }
+        return image
     }
 
     fun getTracks(trackIds: List<String>): List<Playable> {

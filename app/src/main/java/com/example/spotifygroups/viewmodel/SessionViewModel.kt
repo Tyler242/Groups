@@ -2,9 +2,9 @@ package com.example.spotifygroups.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.QueueRepository
-import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.data.SpotifyRepository
+import com.example.spotifygroups.datamodel.QPlayable
 import com.example.spotifygroups.uistatemodel.SessionUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,9 +29,7 @@ class SessionViewModel(
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 sharedQueueViewModel.syncLiveQueue {
-                    _uiState.value = SessionUiState(
-                        isPaused = true,
-                    )
+                    _uiState.value = setUiState()
                     setNextItemCallback()
                 }
             }
@@ -39,11 +37,17 @@ class SessionViewModel(
     }
 
     private fun setNextItemCallback() {
-        Timer().scheduleAtFixedRate(0, 500) {
+        Timer().scheduleAtFixedRate(0, 1000) {
             if (!isAddingToQueue) {
                 addNextToSpotifyQueue()
                 sharedQueueViewModel.syncLiveQueue {
-                    _uiState.value = SessionUiState(sharedQueueViewModel.liveQueue.value.isPaused)
+                    if (sharedQueueViewModel.liveQueue.value.isPaused) {
+                        _uiState.value = setUiState()
+                        spotifyRepository.pause(false)
+                    } else {
+                        _uiState.value = setUiState()
+                        spotifyRepository.resume(false)
+                    }
                 }
             }
         }
@@ -56,7 +60,7 @@ class SessionViewModel(
 
         // check if current track is in the queue
         val trackInQueue = sharedQueueViewModel.liveQueue.value.queue.any {
-            it.name == spotifyTrack.name && it.duration == spotifyTrack.duration
+            it.playable.name == spotifyTrack.name && it.playable.duration == spotifyTrack.duration
         }
         if (trackInQueue) {
             // the current playing track is in the queue
@@ -64,8 +68,10 @@ class SessionViewModel(
             if (millisecondsLeft <= 5000) {
                 isAddingToQueue = true
                 if (sharedQueueViewModel.hasNextTrack()) {
-                    val nextTrack = sharedQueueViewModel.getNextTrack()
-                    sharedQueueViewModel.playNext(nextTrack, millisecondsLeft) {
+                    sharedQueueViewModel.playNext(
+                        sharedQueueViewModel.getNextTrack(),
+                        millisecondsLeft
+                    ) {
                         isAddingToQueue = false
                     }
                 } else {
@@ -78,25 +84,21 @@ class SessionViewModel(
     }
 
 
-    fun removeFromQueue(playable: Playable, index: Int) {
+    fun removeFromQueue(playable: QPlayable, index: Int) {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 sharedQueueViewModel.removeFromLiveQueue(playable) {
-                    _uiState.value = SessionUiState(
-                        _uiState.value.isPaused
-                    )
+                    _uiState.value = setUiState()
                 }
             }
         }
     }
 
-    fun updateQueue(playable: Playable, index: Int) {
+    fun updateQueue(playable: QPlayable, index: Int) {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 sharedQueueViewModel.updateQueue(playable, index) {
-                    _uiState.value = SessionUiState(
-                        _uiState.value.isPaused
-                    )
+                    _uiState.value = setUiState()
                 }
             }
         }
@@ -115,24 +117,24 @@ class SessionViewModel(
                         // user is trying to begin or continue playback
                         // check if there are tracks in the queue.
                         val queueCurrentTrack = sharedQueueViewModel.liveQueue.value.currentTrack
-                        val isQueueEmpty = sharedQueueViewModel.liveQueue.value.queue.isEmpty()
+                        val isQueueEmpty = sharedQueueViewModel.hasNextTrack()
                         if (!isQueueEmpty && queueCurrentTrack !== null) {
                             // there are tracks in the queue
                             // check the current spotify track
                             val currentSpotifyTrack =
                                 spotifyRepository.getCurrentPlayingTrack().first
-                            if (currentSpotifyTrack.name !== queueCurrentTrack.name &&
-                                currentSpotifyTrack.duration != queueCurrentTrack.duration
+                            if (currentSpotifyTrack.name !== queueCurrentTrack.playable.name &&
+                                currentSpotifyTrack.duration != queueCurrentTrack.playable.duration
                             ) {
                                 // spotify track is not the current queue track.
                                 sharedQueueViewModel.playPauseQueue(false) {
-                                    _uiState.value = SessionUiState(false)
-                                    spotifyRepository.playTrack(queueCurrentTrack, false)
+                                    _uiState.value = setUiState(false)
+                                    spotifyRepository.playTrack(queueCurrentTrack.playable, false)
                                 }
                             } else {
                                 // spotify track is the current queue track.
                                 sharedQueueViewModel.playPauseQueue(false) {
-                                    _uiState.value = SessionUiState(false)
+                                    _uiState.value = setUiState(false)
                                     spotifyRepository.resume(false)
                                 }
                             }
@@ -143,12 +145,47 @@ class SessionViewModel(
                     } else {
                         // user is trying to pause playback
                         sharedQueueViewModel.playPauseQueue(true) {
-                            _uiState.value = SessionUiState(true)
+                            _uiState.value = setUiState(true)
                             spotifyRepository.pause(false)
                         }
                     }
                 }
             }
         }
+    }
+
+    fun getParticipants(): List<String> {
+        return sharedQueueViewModel.liveQueue.value.participants
+    }
+
+    fun leaveSession(callback: (Boolean) -> Unit) {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                val successResponse = queueRepository.leaveQueue()
+                callback(successResponse)
+            }
+        }
+    }
+
+    fun deleteSession(callback: (Boolean) -> Unit) {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                val successResponse = queueRepository.deleteQueue()
+                callback(successResponse)
+            }
+        }
+    }
+
+    private fun setUiState(isPaused: Boolean? = null): SessionUiState {
+        return SessionUiState(
+            if (isPaused !== null) isPaused else sharedQueueViewModel.liveQueue.value.isPaused,
+            sharedQueueViewModel.liveQueue.value.participants,
+            sharedQueueViewModel.liveQueue.value.creatorId
+        )
+    }
+
+    fun reset() {
+        _uiState.value = SessionUiState()
+        sharedQueueViewModel.reset()
     }
 }

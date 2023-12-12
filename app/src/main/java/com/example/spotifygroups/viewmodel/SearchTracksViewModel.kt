@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.datamodel.QPlayable
 import com.example.spotifygroups.uistatemodel.SearchTracksUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,7 @@ class SearchTracksViewModel(
     val uiState: StateFlow<SearchTracksUiState> = _uiState.asStateFlow()
 
     fun updateQuery(query: String) {
-        _uiState.value = SearchTracksUiState(query, tracksToAdd = _uiState.value.tracksToAdd)
+        _uiState.value = SearchTracksUiState(query)
         if (query.length >= 4) {
             getSearchResults()
         }
@@ -33,20 +34,20 @@ class SearchTracksViewModel(
             CoroutineScope(Dispatchers.IO).launch {
                 val tracks = spotifyRepository.searchTracks(_uiState.value.query)
                 _uiState.value =
-                    SearchTracksUiState(_uiState.value.query, tracks, _uiState.value.tracksToAdd)
+                    SearchTracksUiState(_uiState.value.query, tracks)
             }
         }
     }
 
-    fun removeFromSearchResult(item: Playable) {
+    fun removeFromSearchResult(item: QPlayable) {
         val tracks = _uiState.value.searchResults.filter {
             it !== item
         }
         _uiState.value =
-            SearchTracksUiState(_uiState.value.query, tracks, _uiState.value.tracksToAdd)
+            SearchTracksUiState(_uiState.value.query, tracks)
     }
 
-    fun addToQueue(playable: Playable) {
+    fun addToQueue(playable: QPlayable) {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 sharedQueueViewModel.addToLiveQueue(playable) {

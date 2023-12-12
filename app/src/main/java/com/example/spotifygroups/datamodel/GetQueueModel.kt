@@ -13,7 +13,7 @@ data class Playable(
     @SerializedName("album") val album: Album? = null,
     @SerializedName("artists") val artists: List<Artist> = emptyList(),
     // both episodes and tracks
-    @SerializedName("duration_ms") val duration: Int,
+    @SerializedName("duration_ms") val duration: Long,
     @SerializedName("explicit") val explicit: Boolean,
     @SerializedName("href") val href: String,
     @SerializedName("id") val id: String,

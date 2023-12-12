@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.datamodel.QPlayable
 import com.example.spotifygroups.viewmodel.SearchTracksViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,25 +122,22 @@ fun SearchTracksDialog(
 
 @Composable
 fun SearchItem(
-    item: Playable,
+    item: QPlayable,
     searchTracksViewModel: SearchTracksViewModel = viewModel(),
 ) {
-    var image = item.album!!.images.find { it.width < 100 }
-    if (image == null) {
-        val lastImgIndex = item.album.images.count()
-        image = item.album.images[lastImgIndex - 1]
-    }
-    val artists = item.artists.joinToString { it.name }
+    val artists = item.artists.joinToString { it }
     SmallFloatingActionButton(onClick = {
         searchTracksViewModel.removeFromSearchResult(item)
     }) {
         Icon(Icons.Rounded.Close, "Remove from result", Modifier.size(36.dp))
     }
-    AsyncImage(
-        image.url,
-        contentDescription = item.name,
-        Modifier.padding(5.dp, 0.dp)
-    )
+    if (item.image !== null) {
+        AsyncImage(
+            item.image.url,
+            contentDescription = item.name,
+            Modifier.padding(5.dp, 0.dp)
+        )
+    }
     Text(
         "${item.name} - $artists",
         Modifier

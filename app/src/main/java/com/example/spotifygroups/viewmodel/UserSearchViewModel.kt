@@ -3,7 +3,8 @@ package com.example.spotifygroups.viewmodel
 import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.FriendRepository
 import com.example.spotifygroups.datamodel.Friend
-import com.example.spotifygroups.uistatemodel.FriendSearchUiState
+import com.example.spotifygroups.datamodel.UserModel
+import com.example.spotifygroups.uistatemodel.UserSearchUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,12 +13,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-class FriendSearchViewModel(private val friendRepository: FriendRepository) : ViewModel() {
-    private val _uiState = MutableStateFlow(FriendSearchUiState())
-    val uiState: StateFlow<FriendSearchUiState> = _uiState.asStateFlow()
+class UserSearchViewModel(private val friendRepository: FriendRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow(UserSearchUiState())
+    val uiState: StateFlow<UserSearchUiState> = _uiState.asStateFlow()
 
     fun updateQuery(query: String) {
-        _uiState.value = FriendSearchUiState(query)
+        _uiState.value = UserSearchUiState(query)
         if (query.length >= 2) {
             getSearchResults()
         }
@@ -27,24 +28,24 @@ class FriendSearchViewModel(private val friendRepository: FriendRepository) : Vi
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 val data = friendRepository.searchUsers(_uiState.value.query)
-                _uiState.value = FriendSearchUiState(_uiState.value.query, data.users)
+                _uiState.value = UserSearchUiState(_uiState.value.query, data.users)
             }
         }
     }
 
-    fun addFriend(friend: Friend) {
+    fun addFriend(user: UserModel) {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
-                friendRepository.addFriend(friend.userId)
-                removeFromSearchResult(friend)
+                friendRepository.addFriend(user.id)
+                removeFromSearchResult(user)
             }
         }
     }
 
-    fun removeFromSearchResult(friend: Friend) {
+    private fun removeFromSearchResult(user: UserModel) {
         val searchResults = _uiState.value.searchResults.filter {
-            it != friend
+            it != user
         }
-        _uiState.value = FriendSearchUiState(_uiState.value.query, searchResults)
+        _uiState.value = UserSearchUiState(_uiState.value.query, searchResults)
     }
 }

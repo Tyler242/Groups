@@ -38,13 +38,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spotifygroups.data.FriendRepository
 import com.example.spotifygroups.datamodel.Friend
-import com.example.spotifygroups.viewmodel.FriendSearchViewModel
+import com.example.spotifygroups.datamodel.UserModel
+import com.example.spotifygroups.viewmodel.UserSearchViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FriendSearchView(friendRepository: FriendRepository, onDismissRequest: () -> Unit) {
-    val friendSearchViewModel = FriendSearchViewModel(friendRepository)
-    val friendSearchUiState by friendSearchViewModel.uiState.collectAsState()
+fun UserSearchView(friendRepository: FriendRepository, onDismissRequest: () -> Unit) {
+    val userSearchViewModel = UserSearchViewModel(friendRepository)
+    val userSearchUiState by userSearchViewModel.uiState.collectAsState()
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             Modifier
@@ -72,7 +73,7 @@ fun FriendSearchView(friendRepository: FriendRepository, onDismissRequest: () ->
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                itemsIndexed(friendSearchUiState.searchResults) { index, item ->
+                itemsIndexed(userSearchUiState.searchResults) { index, item ->
                     Row(
                         Modifier
                             .background(Color.Black)
@@ -81,17 +82,17 @@ fun FriendSearchView(friendRepository: FriendRepository, onDismissRequest: () ->
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start
                     ) {
-                        FriendResult(item, friendSearchViewModel)
-                        if (index < friendSearchUiState.searchResults.count() - 1) {
+                        UserResult(item, userSearchViewModel)
+                        if (index < userSearchUiState.searchResults.count() - 1) {
                             Divider(Modifier, 2.dp, Color.Gray)
                         }
                     }
                 }
             }
             OutlinedTextField(
-                friendSearchUiState.query,
+                userSearchUiState.query,
                 onValueChange = {
-                    friendSearchViewModel.updateQuery(it)
+                    userSearchViewModel.updateQuery(it)
                 },
                 Modifier
                     .fillMaxWidth(1f)
@@ -108,9 +109,9 @@ fun FriendSearchView(friendRepository: FriendRepository, onDismissRequest: () ->
 }
 
 @Composable
-fun FriendResult(friend: Friend, friendSearchViewModel: FriendSearchViewModel = viewModel()) {
+fun UserResult(user: UserModel, userSearchViewModel: UserSearchViewModel = viewModel()) {
     Text(
-        "${friend.name}",
+        "${user.name}",
         Modifier
             .padding(5.dp, 0.dp)
             .fillMaxWidth(0.8f)
@@ -119,7 +120,7 @@ fun FriendResult(friend: Friend, friendSearchViewModel: FriendSearchViewModel = 
         textAlign = TextAlign.Center
     )
     SmallFloatingActionButton(onClick = {
-        friendSearchViewModel.addFriend(friend)
+        userSearchViewModel.addFriend(user)
     }) {
         Icon(Icons.Rounded.Add, "Add Friend", Modifier.size(36.dp))
     }

@@ -1,5 +1,6 @@
 package com.example.spotifygroups.network
 
+import android.util.Log
 import com.google.gson.Gson
 import java.net.HttpURLConnection
 import java.net.URL
@@ -19,6 +20,7 @@ fun <T : Any> getRequest(
     connection.setRequestProperty("Accept", accept)
     connection.doInput = true
     val data = connection.inputStream.bufferedReader().use { it.readText() }
+
     return Gson().fromJson(data, returnModel::class.java)
 }
 

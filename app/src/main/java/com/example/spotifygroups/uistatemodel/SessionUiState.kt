@@ -4,4 +4,6 @@ import com.example.spotifygroups.datamodel.Playable
 
 data class SessionUiState(
     val isPaused: Boolean = true,
+    val participants: List<String> = emptyList(),
+    val creatorId: String = ""
 )

@@ -1,7 +1,11 @@
 package com.example.spotifygroups.uistatemodel
 
-data class HomeUiState(val action: HomeActions = HomeActions.NONE)
+data class HomeUiState(
+    val queuesToJoin: List<QueueToJoin> = emptyList(),
+)
 
-enum class HomeActions {
-    GROUP, FRIENDS, NONE
-}
+data class QueueToJoin(
+    val queueId: String,
+    val creatorId: String,
+    val creatorName: String? = null
+)

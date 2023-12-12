@@ -17,8 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -39,18 +41,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.data.QueueRepository
+import com.example.spotifygroups.data.SpotifyRepository
 import com.example.spotifygroups.datamodel.Image
 import com.example.spotifygroups.datamodel.Playable
+import com.example.spotifygroups.datamodel.QueueItem
+import com.example.spotifygroups.viewmodel.AppViewModel
 import com.example.spotifygroups.viewmodel.SearchTracksViewModel
 import com.example.spotifygroups.viewmodel.SessionViewModel
 import com.example.spotifygroups.viewmodel.SharedQueueViewModel
 
 @Composable
-fun SessionView(spotifyRepository: SpotifyRepository, queueRepository: QueueRepository) {
+fun SessionView(
+    appViewModel: AppViewModel,
+    spotifyRepository: SpotifyRepository,
+    queueRepository: QueueRepository
+) {
     val sharedQueueResultModel = SharedQueueViewModel(spotifyRepository, queueRepository)
     val sessionViewModel =
         SessionViewModel(spotifyRepository, queueRepository, sharedQueueResultModel)
@@ -60,6 +67,9 @@ fun SessionView(spotifyRepository: SpotifyRepository, queueRepository: QueueRepo
     val queueUiState by sharedQueueResultModel.liveQueue.collectAsState()
     val sessionUiState by sessionViewModel.uiState.collectAsState()
     var showAddDialog by remember {
+        mutableStateOf(false)
+    }
+    var showSessionInfoDialog by remember {
         mutableStateOf(false)
     }
 
@@ -93,26 +103,15 @@ fun SessionView(spotifyRepository: SpotifyRepository, queueRepository: QueueRepo
                     QueueItem(item, index, sessionViewModel)
                 }
             }
-            FloatingActionButton(onClick = {
-                showAddDialog = true
-            }) {
-                Icon(Icons.Rounded.Add, "Add more tracks", Modifier.size(48.dp))
-            }
-        }
-        Column(
-            Modifier
-                .fillMaxWidth(1f)
-                .fillMaxHeight(1f)
-        ) {
             Row(
                 Modifier.fillMaxSize(1f),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                FloatingActionButton({
-                    Log.i("SessionView", "Info")
+                FloatingActionButton(onClick = {
+                    showAddDialog = true
                 }, shape = CircleShape) {
-                    Icon(Icons.Rounded.Info, "Session Info", Modifier.size(48.dp))
+                    Icon(Icons.Rounded.Add, "Add more tracks", Modifier.size(48.dp))
                 }
                 FloatingActionButton({
                     Log.i("SessionView", "Play/Pause")
@@ -131,19 +130,63 @@ fun SessionView(spotifyRepository: SpotifyRepository, queueRepository: QueueRepo
                 }
             }
         }
+        Column(
+            Modifier
+                .fillMaxWidth(1f)
+                .fillMaxHeight(1f)
+        ) {
+            Row(
+                Modifier.fillMaxSize(1f),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FloatingActionButton({
+                    Log.i("SessionView", "Info")
+                    showSessionInfoDialog = true
+                }, shape = CircleShape) {
+                    Icon(Icons.Rounded.Info, "Session Info", Modifier.size(48.dp))
+                }
+                FloatingActionButton(onClick = {
+                    if (queueRepository.getUserId() == queueUiState.creatorId) {
+                        sessionViewModel.deleteSession {
+                            sessionViewModel.reset()
+                            // call a function to delete all values
+                            appViewModel.renderHomeView()
+                        }
+                    } else {
+                        sessionViewModel.leaveSession {
+                            sessionViewModel.reset()
+                            // call a function to delete all values
+                            appViewModel.renderHomeView()
+                        }
+                    }
+                }, shape = CircleShape) {
+                    if (queueRepository.getUserId() == queueUiState.creatorId) {
+                        Icon(Icons.Rounded.Delete, "End Session", Modifier.size(48.dp))
+                    } else {
+                        Icon(Icons.Rounded.ArrowBack, "Leave Session", Modifier.size(48.dp))
+                    }
+                }
+            }
+        }
     }
     if (showAddDialog) {
         SearchTracksDialog(searchTracksViewModel) {
             showAddDialog = false
         }
     }
+    if (showSessionInfoDialog) {
+        SessionInfoView(sessionViewModel, queueRepository) {
+            showSessionInfoDialog = false
+        }
+    }
 }
 
 @Composable
-fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel = viewModel()) {
-    val modifier = if (index == 0) Modifier.background(Color.DarkGray) else Modifier.background(Color.LightGray)
+fun QueueItem(queueItem: QueueItem, index: Int, sessionViewModel: SessionViewModel) {
+    val modifier =
+        if (index == 0) Modifier.background(Color.DarkGray) else Modifier.background(Color.LightGray)
     val color = if (index == 0) Color.LightGray else Color.DarkGray
-    val image = getImage(playable)
 
     Row(
         modifier,
@@ -151,17 +194,19 @@ fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel
         horizontalArrangement = Arrangement.Start
     ) {
         SmallFloatingActionButton(onClick = {
-            sessionViewModel.removeFromQueue(playable, index)
+            sessionViewModel.removeFromQueue(queueItem.playable, index)
         }) {
             Icon(Icons.Rounded.Close, "Remove track from queue", Modifier.size(36.dp))
         }
-        AsyncImage(
-            model = image.url,
-            contentDescription = playable.name,
-            Modifier.padding(5.dp, 0.dp)
-        )
+        if (queueItem.playable.image !== null) {
+            AsyncImage(
+                model = queueItem.playable.image.url,
+                contentDescription = queueItem.playable.name,
+                Modifier.padding(5.dp, 0.dp)
+            )
+        }
         Text(
-            playable.name,
+            queueItem.playable.name,
             Modifier
                 .padding(5.dp, 0.dp)
                 .fillMaxWidth(0.8f)
@@ -172,7 +217,7 @@ fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel
         )
         SmallFloatingActionButton(onClick = {
             if (index != 0) {
-                sessionViewModel.updateQueue(playable, index - 1)
+                sessionViewModel.updateQueue(queueItem.playable, index - 1)
             }
         }) {
             Icon(
@@ -184,13 +229,4 @@ fun QueueItem(playable: Playable, index: Int, sessionViewModel: SessionViewModel
             )
         }
     }
-}
-
-fun getImage(playable: Playable): Image {
-    var image = playable.album!!.images.find { it.width < 100 }
-    if (image == null) {
-        val lastImgIndex = playable.album.images.count()
-        image = playable.album.images[lastImgIndex - 1]
-    }
-    return image
 }

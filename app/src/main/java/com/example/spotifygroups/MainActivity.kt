@@ -67,17 +67,22 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val spotifyUiState by spotifyViewModel.uiState.collectAsState()
                     val appState by appViewModel.uiState.collectAsState()
-                    if (appState.view == View.HOME) HomeView(appViewModel)
-                    else if (appState.view == View.SESSION) SessionView(
-                        spotifyRepository,
-                        queueRepository
-                    )
-                    else if (appState.view == View.FRIEND) {
-                        friendRepository = FriendRepository(
-                            queueRepository.getUserId(),
-                            queueRepository.getToken()
+                    when (appState.view) {
+                        View.HOME -> HomeView(appViewModel, queueRepository)
+                        View.SESSION -> SessionView(
+                            appViewModel,
+                            spotifyRepository,
+                            queueRepository
                         )
-                        FriendView(friendRepository)
+                        View.FRIEND -> {
+                            friendRepository = FriendRepository(
+                                queueRepository.getUserId(),
+                                queueRepository.getToken()
+                            )
+                            FriendView(friendRepository) {
+                                appViewModel.renderHomeView()
+                            }
+                        }
                     }
                 }
             }

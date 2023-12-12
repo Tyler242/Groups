@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,7 +39,7 @@ import com.example.spotifygroups.datamodel.Friend
 import com.example.spotifygroups.viewmodel.FriendViewModel
 
 @Composable
-fun FriendView(friendRepository: FriendRepository) {
+fun FriendView(friendRepository: FriendRepository, navigateHome: () -> Unit) {
     val friendViewModel = FriendViewModel(friendRepository)
     val friendUiState by friendViewModel.uiState.collectAsState()
     var showFriendSearchView by remember {
@@ -75,20 +77,31 @@ fun FriendView(friendRepository: FriendRepository) {
                 }
             }
         }
-        Column {
+        Row(
+            Modifier.fillMaxSize(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
             FloatingActionButton(onClick = {
                 showFriendSearchView = true
             }) {
                 Icon(
                     Icons.Rounded.Search,
-                    contentDescription = "Find friends",
+                    "Find friends",
+                    Modifier.size(48.dp)
+                )
+            }
+            FloatingActionButton(onClick = navigateHome) {
+                Icon(
+                    Icons.Rounded.Home,
+                    "Navigate Home",
                     Modifier.size(48.dp)
                 )
             }
         }
     }
     if (showFriendSearchView) {
-        FriendSearchView(friendRepository) {
+        UserSearchView(friendRepository) {
             showFriendSearchView = false
         }
     }
