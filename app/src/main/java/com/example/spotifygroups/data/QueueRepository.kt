@@ -1,11 +1,13 @@
 package com.example.spotifygroups.data
 
+import android.util.Log
 import com.example.spotifygroups.datamodel.AuthRequestModel
 import com.example.spotifygroups.datamodel.AuthResultModel
 import com.example.spotifygroups.datamodel.AuthTokenModel
 import com.example.spotifygroups.datamodel.FriendQueuesResultModel
 import com.example.spotifygroups.datamodel.NameResult
 import com.example.spotifygroups.datamodel.QPlayable
+import com.example.spotifygroups.datamodel.QueueError
 import com.example.spotifygroups.datamodel.QueueResultModel
 import com.example.spotifygroups.datamodel.SpotifyUserModel
 import com.example.spotifygroups.datamodel.SuccessResponse
@@ -13,10 +15,13 @@ import com.example.spotifygroups.network.deleteRequest
 import com.example.spotifygroups.network.getRequest
 import com.example.spotifygroups.network.postRequest
 import com.example.spotifygroups.network.putRequest
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.net.HttpURLConnection
+import java.net.URL
 
 class QueueRepository {
     private lateinit var token: String
@@ -57,16 +62,31 @@ class QueueRepository {
         return queueId !== null
     }
 
-    fun getQueue(): QueueResultModel {
+    fun getQueue(): Pair<QueueResultModel, QueueError> {
         val resultModel = QueueResultModel(id = "", creatorId = "")
         try {
             val url = "$baseUrl/queue/$queueId"
             val contentAccept = "application/json"
-            return getRequest(url, contentAccept, contentAccept, "Bearer $token", resultModel)
+
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.doInput = true
+
+            return if (connection.responseCode == 204) {
+                Pair(resultModel, QueueError(false))
+            } else {
+                val data = connection.inputStream.bufferedReader().use { it.readText() }
+                val newResultModel = Gson().fromJson(data, resultModel::class.java)
+                Pair(newResultModel, QueueError(true))
+            }
         } catch (ex: Exception) {
+            Log.e("QR", "${ex.message}")
             ex.printStackTrace()
         }
-        return resultModel
+        return Pair(resultModel, QueueError(false))
     }
 
     fun createQueue(): QueueResultModel {
@@ -96,22 +116,21 @@ class QueueRepository {
         return resultModel
     }
 
-    fun getParticipantNames(friendId: String): String? {
-        val resultModel = NameResult()
-        try {
-            val url = "$baseUrl/friends/$friendId/name"
-            val contentAccept = "application/json"
-            return getRequest(url, contentAccept, contentAccept, "Bearer $token", resultModel).name
-        } catch (ex: Exception) {
-            ex.printStackTrace()
-        }
-        return resultModel.name
-    }
-
     fun leaveQueue(): Boolean {
         val resultModel = SuccessResponse()
         try {
             val url = "$baseUrl/queue/$queueId/user"
+            return deleteRequest(url, "Bearer $token", resultModel).success
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+        return resultModel.success
+    }
+
+    fun removeParticipant(friendId: String): Boolean {
+        val resultModel = SuccessResponse()
+        try {
+            val url = "$baseUrl/queue/$queueId/user/$friendId"
             return deleteRequest(url, "Bearer $token", resultModel).success
         } catch (ex: Exception) {
             ex.printStackTrace()

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.spotifygroups.data.QueueRepository
 import com.example.spotifygroups.data.SpotifyRepository
+import com.example.spotifygroups.datamodel.Friend
 import com.example.spotifygroups.datamodel.QPlayable
 import com.example.spotifygroups.uistatemodel.SessionUiState
 import kotlinx.coroutines.CoroutineScope
@@ -54,30 +55,51 @@ class SessionViewModel(
     }
 
     private fun addNextToSpotifyQueue() {
-        val currentPlayingData = spotifyRepository.getCurrentPlayingTrack()
-        val spotifyTrack = currentPlayingData.first
-        val positionMs = currentPlayingData.second
+        try {
+            if (!spotifyRepository.isSpotifyTrackLoaded()) {
+                return
+            }
+            val currentPlayingData = spotifyRepository.getCurrentPlayingTrack() ?: return
+            val spotifyTrack = currentPlayingData.first
+            val positionMs = currentPlayingData.second
 
-        // check if current track is in the queue
-        val trackInQueue = sharedQueueViewModel.liveQueue.value.queue.any {
-            it.playable.name == spotifyTrack.name && it.playable.duration == spotifyTrack.duration
+            // check if current track is in the queue
+            val trackInQueue = sharedQueueViewModel.liveQueue.value.queue.any {
+                it.playable!!.name == spotifyTrack.name && it.playable.duration == spotifyTrack.duration
+            }
+            if (trackInQueue) {
+                // the current playing track is in the queue
+                val millisecondsLeft = spotifyTrack.duration - positionMs
+                if (millisecondsLeft <= 5000) {
+                    isAddingToQueue = true
+                    if (sharedQueueViewModel.hasNextTrack()) {
+                        sharedQueueViewModel.playNext(millisecondsLeft) {
+                            isAddingToQueue = false
+                        }
+                    } else {
+                        sharedQueueViewModel.pauseAfterDelay(millisecondsLeft) {
+                            isAddingToQueue = false
+                        }
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            return
         }
-        if (trackInQueue) {
-            // the current playing track is in the queue
-            val millisecondsLeft = spotifyTrack.duration - positionMs
-            if (millisecondsLeft <= 5000) {
+    }
+
+    fun skip() {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
                 isAddingToQueue = true
+                Log.i("SVM - Skip", sharedQueueViewModel.hasNextTrack().toString())
                 if (sharedQueueViewModel.hasNextTrack()) {
-                    sharedQueueViewModel.playNext(
-                        sharedQueueViewModel.getNextTrack(),
-                        millisecondsLeft
-                    ) {
+                    sharedQueueViewModel.skip {
                         isAddingToQueue = false
                     }
                 } else {
-                    sharedQueueViewModel.pauseAfterDelay(millisecondsLeft) {
-                        isAddingToQueue = false
-                    }
+                    isAddingToQueue = false
                 }
             }
         }
@@ -104,57 +126,51 @@ class SessionViewModel(
         }
     }
 
-    fun updatePlayState() {
-        // could be called for paused or playing
-        // sync the queue
-        // if we are playing then check to make sure there is something in the queue.
-        // if we are pausing, go ahead and pause.
+    fun play() {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
                 sharedQueueViewModel.syncLiveQueue {
-                    val isPaused = sharedQueueViewModel.liveQueue.value.isPaused
-                    if (isPaused) {
-                        // user is trying to begin or continue playback
-                        // check if there are tracks in the queue.
-                        val queueCurrentTrack = sharedQueueViewModel.liveQueue.value.currentTrack
-                        val isQueueEmpty = sharedQueueViewModel.hasNextTrack()
-                        if (!isQueueEmpty && queueCurrentTrack !== null) {
-                            // there are tracks in the queue
-                            // check the current spotify track
-                            val currentSpotifyTrack =
-                                spotifyRepository.getCurrentPlayingTrack().first
-                            if (currentSpotifyTrack.name !== queueCurrentTrack.playable.name &&
-                                currentSpotifyTrack.duration != queueCurrentTrack.playable.duration
-                            ) {
-                                // spotify track is not the current queue track.
-                                sharedQueueViewModel.playPauseQueue(false) {
-                                    _uiState.value = setUiState(false)
-                                    spotifyRepository.playTrack(queueCurrentTrack.playable, false)
-                                }
-                            } else {
-                                // spotify track is the current queue track.
-                                sharedQueueViewModel.playPauseQueue(false) {
-                                    _uiState.value = setUiState(false)
-                                    spotifyRepository.resume(false)
-                                }
+                    // check what is on the current spotify value
+                    val sTrack = spotifyRepository.getCurrentPlayingTrack()
+                    val qTrack = sharedQueueViewModel.liveQueue.value.currentTrack.playable
+                    if (qTrack !== null && sTrack !== null) {
+                        if (sTrack.first.name == qTrack.name
+                            && sTrack.first.duration == qTrack.duration) {
+                            sharedQueueViewModel.playPauseQueue(false) {
+                                _uiState.value = setUiState(false)
+                                spotifyRepository.resume(false)
                             }
                         } else {
-                            // no tracks in the queue
-                            Log.i("SVM", "Tracks need to be added to the queue before playing")
+                            sharedQueueViewModel.playPauseQueue(false) {
+                                _uiState.value = setUiState(false)
+                                spotifyRepository.playTrack(qTrack, false)
+                            }
+                        }
+                    } else if (sTrack == null && qTrack !== null) {
+                        sharedQueueViewModel.playPauseQueue(false) {
+                            _uiState.value = setUiState(false)
+                            spotifyRepository.playTrack(qTrack, false)
                         }
                     } else {
-                        // user is trying to pause playback
-                        sharedQueueViewModel.playPauseQueue(true) {
-                            _uiState.value = setUiState(true)
-                            spotifyRepository.pause(false)
-                        }
+                        Log.i("SVM", "Please add tracks")
                     }
                 }
             }
         }
     }
 
-    fun getParticipants(): List<String> {
+    fun pause() {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                sharedQueueViewModel.playPauseQueue(true) {
+                    _uiState.value = setUiState(true)
+                    spotifyRepository.pause(false)
+                }
+            }
+        }
+    }
+
+    fun getParticipants(): List<Friend> {
         return sharedQueueViewModel.liveQueue.value.participants
     }
 

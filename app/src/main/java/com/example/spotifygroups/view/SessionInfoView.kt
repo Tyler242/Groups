@@ -29,13 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.spotifygroups.data.QueueRepository
-import com.example.spotifygroups.datamodel.Friend
 import com.example.spotifygroups.viewmodel.SessionInfoViewModel
-import com.example.spotifygroups.viewmodel.SessionViewModel
 
 @Composable
-fun SessionInfoView(sessionViewModel: SessionViewModel, queueRepository: QueueRepository, onDismiss: () -> Unit) {
-    val sessionInfoViewModel = SessionInfoViewModel(sessionViewModel, queueRepository)
+fun SessionInfoView(queueRepository: QueueRepository, onDismiss: () -> Unit) {
+    val sessionInfoViewModel = SessionInfoViewModel(queueRepository)
     val sessionInfoUiState by sessionInfoViewModel.uiState.collectAsState()
 
     Dialog(onDismissRequest = onDismiss) {
@@ -80,7 +78,13 @@ fun SessionInfoView(sessionViewModel: SessionViewModel, queueRepository: QueueRe
                             textAlign = TextAlign.Center,
                             color = Color.DarkGray
                         )
-                        SmallFloatingActionButton(onClick = {}) {
+                        SmallFloatingActionButton(onClick = {
+                            sessionInfoViewModel.removeParticipant(item) {
+                                if (it) {
+                                    sessionInfoViewModel.getParticipantNames()
+                                }
+                            }
+                        }) {
                             Icon(Icons.Rounded.Close, "Remove friend", Modifier.size(36.dp))
                         }
                     }
@@ -88,5 +92,4 @@ fun SessionInfoView(sessionViewModel: SessionViewModel, queueRepository: QueueRe
             }
         }
     }
-
 }

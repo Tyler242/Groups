@@ -12,7 +12,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class SessionInfoViewModel(
-    private val sessionViewModel: SessionViewModel,
     private val queueRepository: QueueRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(emptyList<Friend>())
@@ -22,16 +21,21 @@ class SessionInfoViewModel(
         getParticipantNames()
     }
 
-    private fun getParticipantNames() {
-        val participantIds = sessionViewModel.getParticipants()
+    fun getParticipantNames() {
         runBlocking {
             CoroutineScope(Dispatchers.IO).launch {
-                val participants = mutableListOf<Friend>()
-                participantIds.forEach {
-                    val name = queueRepository.getParticipantNames(it)
-                    participants.add(Friend(it, name))
+                val queueResult = queueRepository.getQueue()
+                if (queueResult.second.participant) {
+                    _uiState.value = queueResult.first.participants
                 }
-                _uiState.value = participants
+            }
+        }
+    }
+
+    fun removeParticipant(participant: Friend, callback: (Boolean) -> Unit) {
+        runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                callback(queueRepository.removeParticipant(participant.userId))
             }
         }
     }

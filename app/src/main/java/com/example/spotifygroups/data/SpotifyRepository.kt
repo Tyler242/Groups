@@ -66,23 +66,44 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
         }
     }
 
-    fun getCurrentPlayingTrack(): Pair<Playable, Long> {
-        val data = _spotifyAppRemote.playerApi.playerState.await().data
-        val track = data.track
-        val type = if (!track.isPodcast && !track.isEpisode) "track" else "episode"
-        return Pair(
-            Playable(
-                artists = track.artists,
-                duration = track.duration,
-                explicit = false,
-                href = "",
-                id = "",
-                isPlayable = true,
-                type = type,
-                name = track.name,
-                uri = track.uri
-            ), data.playbackPosition
-        )
+    fun isSpotifyTrackLoaded(): Boolean {
+        return try {
+            val data = _spotifyAppRemote.playerApi.playerState.await()
+            if (!data.isSuccessful) {
+                false
+            } else {
+                val track = data.data.track
+                track !== null
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            false
+        }
+    }
+
+    fun getCurrentPlayingTrack(): Pair<Playable, Long>? {
+        try {
+            val data = _spotifyAppRemote.playerApi.playerState.await()
+            if (!data.isSuccessful) {
+                throw Exception("unable to get track")
+            }
+            val track = data.data.track
+            return Pair(
+                Playable(
+                    artists = track.artists,
+                    duration = track.duration,
+                    explicit = false,
+                    href = "",
+                    id = "",
+                    isPlayable = true,
+                    name = track.name,
+                    uri = track.uri
+                ), data.data.playbackPosition
+            )
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+        return null
     }
 
     fun playTrack(playable: QPlayable, withCoroutine: Boolean) {
@@ -213,20 +234,6 @@ class SpotifyRepository(private val context: Activity, private val secretsModel:
             val data =
                 getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetTracksModel())
             return data.tracks
-        } catch (ex: Exception) {
-            ex.printStackTrace()
-        }
-        return emptyList()
-    }
-
-    fun getQueue(): List<Playable> {
-        try {
-            val url = "https://api.spotify.com/v1/me/player/queue"
-            val contentTypeAccept = "application/json"
-            val authToken = "Bearer $_token"
-            val data =
-                getRequest(url, contentTypeAccept, contentTypeAccept, authToken, GetQueueModel())
-            return data.queue.filter { it.type == "track" }
         } catch (ex: Exception) {
             ex.printStackTrace()
         }

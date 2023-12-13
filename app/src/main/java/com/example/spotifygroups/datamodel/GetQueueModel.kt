@@ -19,7 +19,6 @@ data class Playable(
     @SerializedName("id") val id: String,
     @SerializedName("is_playable") val isPlayable: Boolean,
     @SerializedName("name") val name: String,
-    @SerializedName("type") val type: String,
     @SerializedName("uri") val uri: String
 )
 

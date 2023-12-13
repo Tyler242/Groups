@@ -7,14 +7,14 @@ data class QueueResultModel(
     @SerializedName("queue") val queue: List<QueueItem> = emptyList(),
     @SerializedName("lengthOfQueue") val length: Int = 0,
     @SerializedName("creatorId") val creatorId: String,
-    @SerializedName("participantIds") val participantIds: List<String> = emptyList(),
+    @SerializedName("participants") val participants: List<Friend> = emptyList(),
     @SerializedName("isPaused") val isPaused: Boolean = true,
-    @SerializedName("currentTrack") val currentTrack: QueueItem? = null,
+    @SerializedName("currentTrack") val currentTrack: QueueItem = QueueItem(),
     @SerializedName("positionMs") val positionMs: Long? = null
 )
 
 data class QueueItem(
-    @SerializedName("playable") val playable: QPlayable,
+    @SerializedName("playable") val playable: QPlayable? = null,
     @SerializedName("next") val next: QPlayable? = null
 )
 
